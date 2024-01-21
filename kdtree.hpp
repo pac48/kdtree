@@ -19,7 +19,7 @@ public:
 
   KDTree();
 
-  inline const Eigen::Vector<T, SIZE> &get_nearest_point(const Eigen::Vector<T, SIZE> &point);
+  inline Eigen::Vector<T, SIZE> get_nearest_point(const Eigen::Vector<T, SIZE> &point);
 
   inline void build_tree(const std::vector<Eigen::Vector<T, SIZE>> &point);
 
@@ -29,4 +29,7 @@ public:
 
   std::vector<KDNode> nodes_{};
   std::vector<Eigen::Vector<T, SIZE>> data_{};
+  std::vector<KDNode *> stack_;
+  std::vector<KDNode *> stack_later_;
+
 };
