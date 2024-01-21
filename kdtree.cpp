@@ -7,7 +7,7 @@ KDTree<SIZE, T>::KDTree() {
   nodes_.reserve(1024);
   data_.reserve(1024);
   stack_.reserve(1024);
-  stack_later_.reserve(1024);
+//  stack_later_.reserve(1024);
 
 }
 
@@ -85,26 +85,23 @@ Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T,
 
   float min_dist = (point.array() - data_[0].array()).pow(2).sum();
   unsigned int ind = 0;
-//  std::vector<KDNode*> stack = {&nodes_[nodes_[0].left], &nodes_[nodes_[0].right]};
 
-
-  stack_.push_back(&nodes_[0]);
+  stack_.push_back({&nodes_[0], 0});
   int total_push = 0;
-  while (!stack_.empty() || !stack_later_.empty()) {
-    if (stack_.empty()) {
-      stack_ = stack_later_;
-      stack_later_.clear();
-    }
-    KDNode *node = stack_.back(); // this dist has already been checked
-    stack_.pop_back();
-    if (std::fabs((node->dim_val - point[node->dim]) * (node->dim_val - point[node->dim])) > min_dist) {
+  KDNode *node;
+  while (!stack_.empty()) {
+    node = stack_.back().node;
+    if (stack_.back().dist > min_dist || (stack_.back().went_right == 1 && stack_.back().went_left == 1)) {
+      stack_.pop_back();
       continue;
     }
 
-    const auto add_left = [this, node, &point, &min_dist, &ind, &total_push](std::vector<KDNode *> &stack) {
+    const auto add_left = [this, &node, &point, &min_dist, &ind, &total_push](
+        std::vector<KDNodeDist> &stack, float near_dist) {
       if (node->left < nodes_.size()) {
+        stack.back().went_left = 1;
         KDNode *left_node = &nodes_[node->left];
-        stack.push_back(left_node);
+        stack.push_back({left_node, near_dist});
         total_push++;
         float dist = (point.array() - data_[node->left].array()).pow(2).sum();
         if (dist <= min_dist) {
@@ -113,10 +110,12 @@ Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T,
         }
       }
     };
-    const auto add_right = [this, node, &point, &min_dist, &ind, &total_push](std::vector<KDNode *> &stack) {
+    const auto add_right = [this, &node, &point, &min_dist, &ind, &total_push](
+        std::vector<KDNodeDist> &stack, float near_dist) {
       if (node->right < nodes_.size()) {
+        stack.back().went_right = 1;
         KDNode *right_node = &nodes_[node->right];
-        stack.push_back(right_node);
+        stack.push_back({right_node, near_dist});
         total_push++;
         float dist = (point.array() - data_[node->right].array()).pow(2).sum();
         if (dist <= min_dist) {
@@ -126,19 +125,34 @@ Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T,
       }
     };
 
-    bool add_both = std::fabs((node->dim_val - point[node->dim]) * (node->dim_val - point[node->dim])) < min_dist;
+    float near_dist = (node->dim_val - point[node->dim]) * (node->dim_val - point[node->dim]);
+    bool add_both = near_dist < min_dist;
     if (point[node->dim] < node->dim_val) {
-      add_left(stack_);
-      if (add_both) {
-        add_right(stack_later_);
+      if (stack_.back().went_left == 0) {
+        stack_.back().went_left = 1;
+        add_left(stack_, 0.0);
+        continue;
       }
+      if (stack_.back().went_right == 0) {
+        stack_.back().went_right = 1;
+        if (add_both) {
+          add_right(stack_, near_dist);
+        }
+      }
+
     } else {
-      add_right(stack_);
-      if (add_both) {
-        add_left(stack_later_);
+      if (stack_.back().went_right == 0) {
+        stack_.back().went_right = 1;
+        add_right(stack_, 0.0);
+        continue;
+      }
+      if (stack_.back().went_left == 0) {
+        stack_.back().went_left = 1;
+        if (add_both) {
+          add_left(stack_, near_dist);
+        }
       }
     }
-
   }
 
 //  printf("total_push: %d\n", total_push);

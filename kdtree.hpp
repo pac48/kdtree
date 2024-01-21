@@ -27,9 +27,17 @@ public:
 
   inline void insert(const Eigen::Vector<T, SIZE> &point);
 
+  struct KDNodeDist {
+    KDNode* node;
+    float dist;
+    unsigned int went_left = 0;
+    unsigned int went_right = 0;
+  };
+
   std::vector<KDNode> nodes_{};
   std::vector<Eigen::Vector<T, SIZE>> data_{};
-  std::vector<KDNode *> stack_;
-  std::vector<KDNode *> stack_later_;
+  std::vector<KDNodeDist> stack_;
+//  std::vector<KDNode *> stack_later_;
+//  std::vector<float> stack_dist_;
 
 };

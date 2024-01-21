@@ -9,19 +9,21 @@ int main() {
   KDTree<3, double> tree;
   srand((unsigned int) time(0));
 
-  constexpr size_t iterations = 128 * 128;
+  constexpr size_t iterations = 100000;
   std::vector<Eigen::Vector<double, 3>> points;
   points.reserve(iterations);
   for (size_t iter = 0; iter < iterations; iter++) {
     points.emplace_back(Eigen::Vector<double, 3>::Random());
   }
+
+//  auto start = std::chrono::high_resolution_clock::now();
   for (size_t iter = 0; iter < iterations; iter++) {
     tree.insert(points[iter]);
   }
-//  tree.build_tree(points);
 
-  Eigen::Vector<double, 3> point;
+
   auto start = std::chrono::high_resolution_clock::now();
+  Eigen::Vector<double, 3> point;
   for (size_t iter = 0; iter < iterations; iter++) {
     point = Eigen::Vector<double, 3>::Random();
     Eigen::Vector<double, 3> v = tree.get_nearest_point(point);
