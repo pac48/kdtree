@@ -51,14 +51,15 @@ Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T,
   float dist = 0;
   unsigned int ind_dist = -1;
 
-  stack_.reserve(128);
-  stack_.push_back({nodes_[0], 0});
-  while (!stack_.empty()) {
-    if (stack_.back().dist > min_dist || (stack_.back().went_right && stack_.back().went_left)) {
-      stack_.pop_back();
+  std::vector<KDNodeDist> stack;
+  stack.reserve(128);
+  stack.push_back({nodes_[0], 0});
+  while (!stack.empty()) {
+    if (stack.back().dist > min_dist || (stack.back().went_right && stack.back().went_left)) {
+      stack.pop_back();
       continue;
     }
-    KDNode &node = stack_.back().node;
+    KDNode &node = stack.back().node;
 
     const auto add_left = [this, node, point](
         std::vector<KDNodeDist> &stack, float near_dist) {
@@ -79,23 +80,23 @@ Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T,
       return std::make_tuple<float, const unsigned int>(0, -1);
     };
 
-    if (point[node.dim] < node.dim_val && !stack_.back().went_left) {
-      stack_.back().went_left = true;
-      std::tie(dist, ind_dist) = add_left(stack_, 0.0);
-    } else if (point[node.dim] >= node.dim_val && !stack_.back().went_right) {
-      stack_.back().went_right = true;
-      std::tie(dist, ind_dist) = add_right(stack_, 0.0);
+    if (point[node.dim] < node.dim_val && !stack.back().went_left) {
+      stack.back().went_left = true;
+      std::tie(dist, ind_dist) = add_left(stack, 0.0);
+    } else if (point[node.dim] >= node.dim_val && !stack.back().went_right) {
+      stack.back().went_right = true;
+      std::tie(dist, ind_dist) = add_right(stack, 0.0);
     } else {
       const float near_dist = (node.dim_val - point[node.dim]) * (node.dim_val - point[node.dim]);
-      if (!stack_.back().went_left && near_dist < min_dist) {
-        stack_.back().went_left = true;
-        std::tie(dist, ind_dist) = add_left(stack_, near_dist);
-      } else if (!stack_.back().went_right && near_dist < min_dist) {
-        stack_.back().went_right = true;
-        std::tie(dist, ind_dist) = add_right(stack_, near_dist);
+      if (!stack.back().went_left && near_dist < min_dist) {
+        stack.back().went_left = true;
+        std::tie(dist, ind_dist) = add_left(stack, near_dist);
+      } else if (!stack.back().went_right && near_dist < min_dist) {
+        stack.back().went_right = true;
+        std::tie(dist, ind_dist) = add_right(stack, near_dist);
       } else {
-        stack_.back().went_left = true;
-        stack_.back().went_right = true;
+        stack.back().went_left = true;
+        stack.back().went_right = true;
       }
     }
     if (ind_dist < nodes_.size() && dist < min_dist) {

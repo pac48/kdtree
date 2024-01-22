@@ -38,7 +38,6 @@ private:
   };
 
   std::vector<KDNode> nodes_{};
-  std::vector<KDNodeDist> stack_;
 public:
   // DEBUG
   std::vector<Eigen::Vector<T, SIZE>> data_{};
