@@ -7,42 +7,38 @@ KDTree<SIZE, T>::KDTree() {}
 
 template<int SIZE, typename T>
 Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_leaf_node(const Eigen::Vector<T, SIZE> &point) {
-
-  return data_[(get_leaf_node_internal(point) - nodes_.data())];
-
+  return data_[get_leaf_node_internal(point)];
 }
 
 
 template<int SIZE, typename T>
-KDNode *KDTree<SIZE, T>::get_leaf_node_internal(const Eigen::Vector<T, SIZE> &point) {
-  KDNode *node;
+unsigned int KDTree<SIZE, T>::get_leaf_node_internal(const Eigen::Vector<T, SIZE> &point) {
+  unsigned int index_new = 0;
   unsigned int index = 0;
-  while (index < nodes_.size()) {
-    node = &nodes_[index];
-    if (point[node->dim] < node->dim_val) {
-      index = node->left;
+  while (index_new < nodes_.size()) {
+    index = index_new;
+    KDNode &node = nodes_[index_new];
+    if (point[node.dim] < node.dim_val) {
+      index_new = node.left;
     } else {
-      index = node->right;
+      index_new = node.right;
     }
   }
-  return node;
+  return index;
 }
 
 template<int SIZE, typename T>
 void KDTree<SIZE, T>::insert(const Eigen::Vector<T, SIZE> &point) {
-  KDNode *node = get_leaf_node_internal(point);
-  unsigned int dim;
+  unsigned int dim = 0;
   if (!nodes_.empty()) {
-    if (point[node->dim] < node->dim_val) {
-      node->left = nodes_.size();
+    KDNode &node = nodes_[get_leaf_node_internal(point)];
+    if (point[node.dim] < node.dim_val) {
+      node.left = nodes_.size();
     } else {
-      node->right = nodes_.size();
+      node.right = nodes_.size();
     }
-    dim = (node->dim + 1) % SIZE;
-  } else {
-    dim = 0;
+    dim = (node.dim + 1) % SIZE;
   }
-
   nodes_.push_back({(float) point[dim], (unsigned int) -1, (unsigned int) -1, (unsigned short) (dim)});
   data_.push_back(point);
 }
@@ -96,13 +92,14 @@ Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T,
       stack_.pop_back();
       continue;
     }
-    KDNode& node = stack_.back().node;
+    KDNode &node = stack_.back().node;
 
     const auto add_left = [this, node, point](
         std::vector<KDNodeDist> &stack, float near_dist) {
       if (node.left < nodes_.size()) {
         stack.push_back({nodes_[node.left], near_dist});
-        return std::make_tuple<float, const unsigned int>((float) (point.array() - data_[node.left].array()).pow(2).sum(), (unsigned int) node.left);
+        return std::make_tuple<float, const unsigned int>(
+            (float) (point.array() - data_[node.left].array()).pow(2).sum(), (unsigned int) node.left);
       }
       return std::make_tuple<float, unsigned int>(0, -1);
     };
@@ -110,7 +107,8 @@ Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T,
         std::vector<KDNodeDist> &stack, float near_dist) {
       if (node.right < nodes_.size()) {
         stack.push_back({nodes_[node.right], near_dist});
-        return std::make_tuple<float, unsigned int>((float) (point.array() - data_[node.right].array()).pow(2).sum(), (unsigned int) node.right);
+        return std::make_tuple<float, unsigned int>((float) (point.array() - data_[node.right].array()).pow(2).sum(),
+                                                    (unsigned int) node.right);
       }
       return std::make_tuple<float, const unsigned int>(0, -1);
     };

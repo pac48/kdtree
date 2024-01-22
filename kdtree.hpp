@@ -28,7 +28,7 @@ public:
   inline void insert(const Eigen::Vector<T, SIZE> &point);
 
 private:
-  inline KDNode *get_leaf_node_internal(const Eigen::Vector<T, SIZE> &point);
+  inline unsigned int  get_leaf_node_internal(const Eigen::Vector<T, SIZE> &point);
 
   struct KDNodeDist {
     KDNode node;
