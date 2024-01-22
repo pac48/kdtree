@@ -31,7 +31,7 @@ private:
   inline KDNode *get_leaf_node_internal(const Eigen::Vector<T, SIZE> &point);
 
   struct KDNodeDist {
-    KDNode *node;
+    KDNode node;
     float dist;
     bool went_left = false;
     bool went_right = false;

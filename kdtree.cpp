@@ -84,71 +84,59 @@ void KDTree<SIZE, T>::build_tree(const std::vector<Eigen::Vector<T, SIZE>> &poin
 template<int SIZE, typename T>
 Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T, SIZE> &point) {
   assert(!nodes_.empty());
-
   float min_dist = (point.array() - data_[0].array()).pow(2).sum();
   unsigned int ind = 0;
+  float dist = 0;
+  unsigned int ind_dist = -1;
 
-  stack_.push_back({&nodes_[0], 0});
-  int total_push = 0;
+  stack_.reserve(128);
+  stack_.push_back({nodes_[0], 0});
   while (!stack_.empty()) {
-    if (stack_.back().dist > min_dist || (stack_.back().went_right == 1 && stack_.back().went_left == 1)) {
+    if (stack_.back().dist > min_dist || (stack_.back().went_right && stack_.back().went_left)) {
       stack_.pop_back();
       continue;
     }
-    KDNode *node = stack_.back().node;
+    KDNode& node = stack_.back().node;
 
-    const auto add_left = [this, node, point, &min_dist, &ind, &total_push](
+    const auto add_left = [this, node, point](
         std::vector<KDNodeDist> &stack, float near_dist) {
-      if (node->left < nodes_.size()) {
-        stack.push_back({&nodes_[node->left], near_dist});
-        total_push++;
-        float dist = (point.array() - data_[node->left].array()).pow(2).sum();
-        if (dist <= min_dist) {
-          min_dist = dist;
-          ind = node->left;
-        }
+      if (node.left < nodes_.size()) {
+        stack.push_back({nodes_[node.left], near_dist});
+        return std::make_tuple<float, const unsigned int>((float) (point.array() - data_[node.left].array()).pow(2).sum(), (unsigned int) node.left);
       }
+      return std::make_tuple<float, unsigned int>(0, -1);
     };
-    const auto add_right = [this, node, point, &min_dist, &ind, &total_push](
+    const auto add_right = [this, node, point](
         std::vector<KDNodeDist> &stack, float near_dist) {
-      if (node->right < nodes_.size()) {
-        stack.push_back({&nodes_[node->right], near_dist});
-        total_push++;
-        float dist = (point.array() - data_[node->right].array()).pow(2).sum();
-        if (dist <= min_dist) {
-          min_dist = dist;
-          ind = node->right;
-        }
+      if (node.right < nodes_.size()) {
+        stack.push_back({nodes_[node.right], near_dist});
+        return std::make_tuple<float, unsigned int>((float) (point.array() - data_[node.right].array()).pow(2).sum(), (unsigned int) node.right);
       }
+      return std::make_tuple<float, const unsigned int>(0, -1);
     };
 
-    if (point[node->dim] < node->dim_val) {
-      if (!stack_.back().went_left) {
-        stack_.back().went_left = true;
-        add_left(stack_, 0.0);
-      } else {
-        if (!stack_.back().went_right) {
-          stack_.back().went_right = true;
-          float near_dist = (node->dim_val - point[node->dim]) * (node->dim_val - point[node->dim]);
-          if (near_dist < min_dist) {
-            add_right(stack_, near_dist);
-          }
-        }
-      }
-
+    if (point[node.dim] < node.dim_val && !stack_.back().went_left) {
+      stack_.back().went_left = true;
+      std::tie(dist, ind_dist) = add_left(stack_, 0.0);
+    } else if (point[node.dim] >= node.dim_val && !stack_.back().went_right) {
+      stack_.back().went_right = true;
+      std::tie(dist, ind_dist) = add_right(stack_, 0.0);
     } else {
-      if (!stack_.back().went_right) {
+      const float near_dist = (node.dim_val - point[node.dim]) * (node.dim_val - point[node.dim]);
+      if (!stack_.back().went_left && near_dist < min_dist) {
+        stack_.back().went_left = true;
+        std::tie(dist, ind_dist) = add_left(stack_, near_dist);
+      } else if (!stack_.back().went_right && near_dist < min_dist) {
         stack_.back().went_right = true;
-        add_right(stack_, 0.0);
+        std::tie(dist, ind_dist) = add_right(stack_, near_dist);
       } else {
-        if (!stack_.back().went_left) {
-          stack_.back().went_left = true;
-          float near_dist = (node->dim_val - point[node->dim]) * (node->dim_val - point[node->dim]);
-          if (near_dist < min_dist) {
-            add_left(stack_, near_dist);
-          }
-        }
+        stack_.back().went_left = true;
+        stack_.back().went_right = true;
       }
+    }
+    if (ind_dist < nodes_.size() && dist < min_dist) {
+      min_dist = dist;
+      ind = ind_dist;
     }
   }
 
