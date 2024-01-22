@@ -3,16 +3,18 @@
 #include "kdtree.hpp"
 
 template<int SIZE, typename T>
-KDTree<SIZE, T>::KDTree() {
-  nodes_.reserve(1024);
-  data_.reserve(1024);
-  stack_.reserve(1024);
-//  stack_later_.reserve(1024);
+KDTree<SIZE, T>::KDTree() {}
+
+template<int SIZE, typename T>
+Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_leaf_node(const Eigen::Vector<T, SIZE> &point) {
+
+  return data_[(get_leaf_node_internal(point) - nodes_.data())];
 
 }
 
+
 template<int SIZE, typename T>
-KDNode *KDTree<SIZE, T>::get_leaf_node(const Eigen::Vector<T, SIZE> &point) {
+KDNode *KDTree<SIZE, T>::get_leaf_node_internal(const Eigen::Vector<T, SIZE> &point) {
   KDNode *node;
   unsigned int index = 0;
   while (index < nodes_.size()) {
@@ -28,7 +30,7 @@ KDNode *KDTree<SIZE, T>::get_leaf_node(const Eigen::Vector<T, SIZE> &point) {
 
 template<int SIZE, typename T>
 void KDTree<SIZE, T>::insert(const Eigen::Vector<T, SIZE> &point) {
-  KDNode *node = get_leaf_node(point);
+  KDNode *node = get_leaf_node_internal(point);
   unsigned int dim;
   if (!nodes_.empty()) {
     if (point[node->dim] < node->dim_val) {
@@ -88,20 +90,17 @@ Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T,
 
   stack_.push_back({&nodes_[0], 0});
   int total_push = 0;
-  KDNode *node;
   while (!stack_.empty()) {
-    node = stack_.back().node;
     if (stack_.back().dist > min_dist || (stack_.back().went_right == 1 && stack_.back().went_left == 1)) {
       stack_.pop_back();
       continue;
     }
+    KDNode *node = stack_.back().node;
 
-    const auto add_left = [this, &node, &point, &min_dist, &ind, &total_push](
+    const auto add_left = [this, node, point, &min_dist, &ind, &total_push](
         std::vector<KDNodeDist> &stack, float near_dist) {
       if (node->left < nodes_.size()) {
-        stack.back().went_left = 1;
-        KDNode *left_node = &nodes_[node->left];
-        stack.push_back({left_node, near_dist});
+        stack.push_back({&nodes_[node->left], near_dist});
         total_push++;
         float dist = (point.array() - data_[node->left].array()).pow(2).sum();
         if (dist <= min_dist) {
@@ -110,12 +109,10 @@ Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T,
         }
       }
     };
-    const auto add_right = [this, &node, &point, &min_dist, &ind, &total_push](
+    const auto add_right = [this, node, point, &min_dist, &ind, &total_push](
         std::vector<KDNodeDist> &stack, float near_dist) {
       if (node->right < nodes_.size()) {
-        stack.back().went_right = 1;
-        KDNode *right_node = &nodes_[node->right];
-        stack.push_back({right_node, near_dist});
+        stack.push_back({&nodes_[node->right], near_dist});
         total_push++;
         float dist = (point.array() - data_[node->right].array()).pow(2).sum();
         if (dist <= min_dist) {
@@ -125,37 +122,35 @@ Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T,
       }
     };
 
-    float near_dist = (node->dim_val - point[node->dim]) * (node->dim_val - point[node->dim]);
-    bool add_both = near_dist < min_dist;
     if (point[node->dim] < node->dim_val) {
-      if (stack_.back().went_left == 0) {
-        stack_.back().went_left = 1;
+      if (!stack_.back().went_left) {
+        stack_.back().went_left = true;
         add_left(stack_, 0.0);
-        continue;
-      }
-      if (stack_.back().went_right == 0) {
-        stack_.back().went_right = 1;
-        if (add_both) {
-          add_right(stack_, near_dist);
+      } else {
+        if (!stack_.back().went_right) {
+          stack_.back().went_right = true;
+          float near_dist = (node->dim_val - point[node->dim]) * (node->dim_val - point[node->dim]);
+          if (near_dist < min_dist) {
+            add_right(stack_, near_dist);
+          }
         }
       }
 
     } else {
-      if (stack_.back().went_right == 0) {
-        stack_.back().went_right = 1;
+      if (!stack_.back().went_right) {
+        stack_.back().went_right = true;
         add_right(stack_, 0.0);
-        continue;
-      }
-      if (stack_.back().went_left == 0) {
-        stack_.back().went_left = 1;
-        if (add_both) {
-          add_left(stack_, near_dist);
+      } else {
+        if (!stack_.back().went_left) {
+          stack_.back().went_left = true;
+          float near_dist = (node->dim_val - point[node->dim]) * (node->dim_val - point[node->dim]);
+          if (near_dist < min_dist) {
+            add_left(stack_, near_dist);
+          }
         }
       }
     }
   }
-
-//  printf("total_push: %d\n", total_push);
 
   return data_[ind];
 

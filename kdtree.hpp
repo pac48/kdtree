@@ -23,21 +23,24 @@ public:
 
   inline void build_tree(const std::vector<Eigen::Vector<T, SIZE>> &point);
 
-  inline KDNode *get_leaf_node(const Eigen::Vector<T, SIZE> &point);
+  inline Eigen::Vector<T, SIZE> get_leaf_node(const Eigen::Vector<T, SIZE> &point);
 
   inline void insert(const Eigen::Vector<T, SIZE> &point);
 
+private:
+  inline KDNode *get_leaf_node_internal(const Eigen::Vector<T, SIZE> &point);
+
   struct KDNodeDist {
-    KDNode* node;
+    KDNode *node;
     float dist;
-    unsigned int went_left = 0;
-    unsigned int went_right = 0;
+    bool went_left = false;
+    bool went_right = false;
   };
 
   std::vector<KDNode> nodes_{};
-  std::vector<Eigen::Vector<T, SIZE>> data_{};
   std::vector<KDNodeDist> stack_;
-//  std::vector<KDNode *> stack_later_;
-//  std::vector<float> stack_dist_;
-
+public:
+  // DEBUG
+  std::vector<Eigen::Vector<T, SIZE>> data_{};
 };
+

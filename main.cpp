@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "chrono"
 #include "iostream"
 
@@ -21,25 +23,26 @@ int main() {
     tree.insert(points[iter]);
   }
 
-
   auto start = std::chrono::high_resolution_clock::now();
   Eigen::Vector<double, 3> point;
   for (size_t iter = 0; iter < iterations; iter++) {
     point = Eigen::Vector<double, 3>::Random();
     Eigen::Vector<double, 3> v = tree.get_nearest_point(point);
+//    Eigen::Vector<double, 3> v = tree.get_leaf_node(point);
 
-    // validate
-//    float min_dist = 1E23;
+//    // validate
+//    double min_dist = 1E23;
 //    unsigned int min_ind = -1;
 //    for (size_t ind = 0; ind < tree.data_.size(); ++ind) {
-//      float dist = (float) (point.array() - tree.data_[ind].array()).pow(2).sum();
+//      double dist = (point.array() - tree.data_[ind].array()).pow(2).sum();
 //      if (dist < min_dist) {
 //        min_dist = dist;
 //        min_ind = ind;
 //      }
 //    }
-//    float kd_dist = (point.array() - v.array()).pow(2).sum();
-//    assert(tree.data_[min_ind] == v);
+//    double kd_dist = (point.array() - v.array()).pow(2).sum();
+//    printf("difference: %f\n", std::fabs(kd_dist - min_dist));
+
   }
 
 
@@ -48,10 +51,6 @@ int main() {
   std::cout << "Time taken by function: " << (double) duration.count() << " nanoseconds" << std::endl;
   std::cout << "Average: " << ((double) duration.count()) / (iterations) << " nanoseconds"
             << std::endl;
-
-  std::cout << tree.data_.back() << "\n";
-  std::cout << tree.data_.size() << "\n";
-  std::cout << tree.nodes_.size() << "\n";
 
   return 0;
 }
