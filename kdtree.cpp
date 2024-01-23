@@ -43,69 +43,46 @@ void KDTree<SIZE, T>::insert(const Eigen::Vector<T, SIZE> &point) {
   data_.push_back(point);
 }
 
+
+template<int SIZE, typename T>
+void
+KDTree<SIZE, T>::get_nearest_point_recurse(const Eigen::Vector<T, SIZE> &point, float &min_dist,
+                                           unsigned int &min_index, unsigned int index) {
+  KDNode &node = nodes_[index];
+  float pot_dist = (point.array() - data_[index].array()).pow(2).sum();
+  if (pot_dist < min_dist) {
+    min_dist = pot_dist;
+    min_index = index;
+  }
+
+  if (point[node.dim] < node.dim_val) {
+    // go left
+    if (node.left < nodes_.size()) {
+      get_nearest_point_recurse(point, min_dist, min_index, node.left);
+    }
+    if ((node.dim_val - point[node.dim]) * (node.dim_val - point[node.dim]) < min_dist && node.right < nodes_.size()) {
+      // go right
+      get_nearest_point_recurse(point, min_dist, min_index, node.right);
+    }
+  } else {
+    // go right
+    if (node.right < nodes_.size()) {
+      get_nearest_point_recurse(point, min_dist, min_index, node.right);
+    }
+    if ((node.dim_val - point[node.dim]) * (node.dim_val - point[node.dim]) < min_dist && node.left < nodes_.size()) {
+      // go left
+      get_nearest_point_recurse(point, min_dist, min_index, node.left);
+    }
+  }
+}
+
 template<int SIZE, typename T>
 Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T, SIZE> &point) {
   assert(!nodes_.empty());
   float min_dist = (point.array() - data_[0].array()).pow(2).sum();
-  unsigned int ind = 0;
-  float dist = 0;
-  unsigned int ind_dist = -1;
-
-  std::vector<KDNodeDist> stack;
-  stack.reserve(128);
-  stack.push_back({nodes_[0], 0});
-  while (!stack.empty()) {
-    if (stack.back().dist > min_dist || (stack.back().went_right && stack.back().went_left)) {
-      stack.pop_back();
-      continue;
-    }
-    KDNode &node = stack.back().node;
-
-    const auto add_left = [this, node, point](
-        std::vector<KDNodeDist> &stack, float near_dist) {
-      if (node.left < nodes_.size()) {
-        stack.push_back({nodes_[node.left], near_dist});
-        return std::make_tuple<float, const unsigned int>(
-            (float) (point.array() - data_[node.left].array()).pow(2).sum(), (unsigned int) node.left);
-      }
-      return std::make_tuple<float, unsigned int>(0, -1);
-    };
-    const auto add_right = [this, node, point](
-        std::vector<KDNodeDist> &stack, float near_dist) {
-      if (node.right < nodes_.size()) {
-        stack.push_back({nodes_[node.right], near_dist});
-        return std::make_tuple<float, unsigned int>((float) (point.array() - data_[node.right].array()).pow(2).sum(),
-                                                    (unsigned int) node.right);
-      }
-      return std::make_tuple<float, const unsigned int>(0, -1);
-    };
-
-    if (point[node.dim] < node.dim_val && !stack.back().went_left) {
-      stack.back().went_left = true;
-      std::tie(dist, ind_dist) = add_left(stack, 0.0);
-    } else if (point[node.dim] >= node.dim_val && !stack.back().went_right) {
-      stack.back().went_right = true;
-      std::tie(dist, ind_dist) = add_right(stack, 0.0);
-    } else {
-      const float near_dist = (node.dim_val - point[node.dim]) * (node.dim_val - point[node.dim]);
-      if (!stack.back().went_left && near_dist < min_dist) {
-        stack.back().went_left = true;
-        std::tie(dist, ind_dist) = add_left(stack, near_dist);
-      } else if (!stack.back().went_right && near_dist < min_dist) {
-        stack.back().went_right = true;
-        std::tie(dist, ind_dist) = add_right(stack, near_dist);
-      } else {
-        stack.back().went_left = true;
-        stack.back().went_right = true;
-      }
-    }
-    if (ind_dist < nodes_.size() && dist < min_dist) {
-      min_dist = dist;
-      ind = ind_dist;
-    }
-  }
-
-  return data_[ind];
+  unsigned int min_index = 0;
+  get_nearest_point_recurse(point, min_dist, min_index, 0);
+  return data_[min_index];
 
 }
 
