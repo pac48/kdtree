@@ -43,6 +43,60 @@ void KDTree<SIZE, T>::insert(const Eigen::Vector<T, SIZE> &point) {
   data_.push_back(point);
 }
 
+template<int SIZE, typename T>
+void KDTree<SIZE, T>::build_tree_internal(const std::vector<Eigen::Vector<T, SIZE>> &points, unsigned int dim,
+                                          unsigned int start, unsigned int end) {
+  std::sort(data_.begin() + start, data_.begin() + end+1,
+            [dim](Eigen::Vector<T, SIZE> a, Eigen::Vector<T, SIZE> b) {
+              return a[dim] < b[dim];
+            });
+
+  auto mid = start + (end - start) / 2;
+
+  if (start == mid && end != mid) {
+    nodes_[mid].dim = dim;
+    nodes_[mid].dim_val = data_[mid][dim];
+    if (data_[end][dim] < data_[mid][dim]) {
+      nodes_[mid].left = end;
+    } else {
+      nodes_[mid].right = end;
+    }
+    dim = (dim + 1) % SIZE;
+    nodes_[end].dim = dim;
+    nodes_[end].dim_val = data_[end][dim];
+    return;
+  } else if (end == start) {
+    nodes_[start].dim_val = data_[start][dim];
+    nodes_[start].dim = dim;
+    return;
+  }
+
+  KDNode node;
+  node.dim = dim;
+  node.dim_val = data_[mid][node.dim];
+
+  node.left = start + ((mid - 1) - start) / 2;
+  node.right = (mid + 1) + (end - (mid + 1)) / 2;
+//  assert(nodes_[mid].dim_val == 0);
+//  assert(node.right != node.left);
+  nodes_[mid] = node;
+  dim = (dim + 1) % SIZE;
+  build_tree_internal(points, dim, start, mid - 1);
+  build_tree_internal(points, dim, mid + 1, end);
+
+}
+
+template<int SIZE, typename T>
+void KDTree<SIZE, T>::build_tree(const std::vector<Eigen::Vector<T, SIZE>> &points) {
+  data_ = points;
+  nodes_.resize(points.size());
+  build_tree_internal(data_, 0, 0, data_.size() - 1);
+
+//  for (size_t i = 0; i < data_.size(); i++) {
+//    KDNode &node = nodes_[i];
+//    assert(data_[i][node.dim] == node.dim_val);
+//  }
+}
 
 template<int SIZE, typename T>
 void
@@ -74,14 +128,15 @@ KDTree<SIZE, T>::get_nearest_point_recurse(const Eigen::Vector<T, SIZE> &point, 
       get_nearest_point_recurse(point, min_dist, min_index, node.left);
     }
   }
+  int o = 0;
 }
 
 template<int SIZE, typename T>
 Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T, SIZE> &point) {
   assert(!nodes_.empty());
-  float min_dist = (point.array() - data_[0].array()).pow(2).sum();
-  unsigned int min_index = 0;
-  get_nearest_point_recurse(point, min_dist, min_index, 0);
+  unsigned int min_index = data_.size() / 2 - 1;
+  float min_dist = (point.array() - data_[min_index].array()).pow(2).sum();
+  get_nearest_point_recurse(point, min_dist, min_index,  min_index);
   return data_[min_index];
 
 }
