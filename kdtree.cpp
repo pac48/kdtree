@@ -13,8 +13,8 @@ Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_leaf_node(const Eigen::Vector<T, SIZ
 
 template<int SIZE, typename T>
 unsigned int KDTree<SIZE, T>::get_leaf_node_internal(const Eigen::Vector<T, SIZE> &point) {
-  unsigned int index_new = 0;
-  unsigned int index = 0;
+  unsigned int index_new = root_;
+  unsigned int index = root_;
   while (index_new < nodes_.size()) {
     index = index_new;
     KDNode &node = nodes_[index_new];
@@ -38,6 +38,8 @@ void KDTree<SIZE, T>::insert(const Eigen::Vector<T, SIZE> &point) {
       node.right = nodes_.size();
     }
     dim = (node.dim + 1) % SIZE;
+  } else{
+    root_ = 0;
   }
   nodes_.push_back({(float) point[dim], (unsigned int) -1, (unsigned int) -1, (unsigned short) (dim)});
   data_.push_back(point);
@@ -77,8 +79,6 @@ void KDTree<SIZE, T>::build_tree_internal(const std::vector<Eigen::Vector<T, SIZ
 
   node.left = start + ((mid - 1) - start) / 2;
   node.right = (mid + 1) + (end - (mid + 1)) / 2;
-//  assert(nodes_[mid].dim_val == 0);
-//  assert(node.right != node.left);
   nodes_[mid] = node;
   dim = (dim + 1) % SIZE;
   build_tree_internal(points, dim, start, mid - 1);
@@ -90,12 +90,8 @@ template<int SIZE, typename T>
 void KDTree<SIZE, T>::build_tree(const std::vector<Eigen::Vector<T, SIZE>> &points) {
   data_ = points;
   nodes_.resize(points.size());
+  root_ =  (data_.size() - 1) / 2;
   build_tree_internal(data_, 0, 0, data_.size() - 1);
-
-//  for (size_t i = 0; i < data_.size(); i++) {
-//    KDNode &node = nodes_[i];
-//    assert(data_[i][node.dim] == node.dim_val);
-//  }
 }
 
 template<int SIZE, typename T>
@@ -134,7 +130,7 @@ KDTree<SIZE, T>::get_nearest_point_recurse(const Eigen::Vector<T, SIZE> &point, 
 template<int SIZE, typename T>
 Eigen::Vector<T, SIZE> KDTree<SIZE, T>::get_nearest_point(const Eigen::Vector<T, SIZE> &point) {
   assert(!nodes_.empty());
-  unsigned int min_index = data_.size() / 2 - 1;
+  unsigned int min_index = root_;
   float min_dist = (point.array() - data_[min_index].array()).pow(2).sum();
   get_nearest_point_recurse(point, min_dist, min_index,  min_index);
   return data_[min_index];

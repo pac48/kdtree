@@ -11,7 +11,7 @@ int main() {
   KDTree<3, float> tree;
   srand((unsigned int) time(0));
 
-  constexpr size_t num_points = 100000;
+  constexpr size_t num_points = 1000000;
   constexpr size_t iterations = 1000000;
   std::vector<Eigen::Vector<float, 3>> points;
   points.reserve(num_points);
@@ -31,6 +31,7 @@ int main() {
   for (size_t iter = 0; iter < iterations; iter++) {
     point = Eigen::Vector<float, 3>::Random();
     Eigen::Vector<float, 3> v = tree.get_nearest_point(point);
+//    Eigen::Vector<float, 3> v = tree.get_leaf_node(point);
 
 //    // validate
 //    float min_dist = 1E23;

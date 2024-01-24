@@ -38,6 +38,7 @@ private:
                                         unsigned int index);
 
   std::vector<KDNode> nodes_{};
+  size_t root_ = -1;
 public:
   // DEBUG
   std::vector<Eigen::Vector<T, SIZE>> data_{};
